@@ -4,11 +4,11 @@ Deep learning models in computational pathology often fail to generalize across 
 
 [pre-print] https://arxiv.org/abs/2601.17228 
 
-# LDM Training
+# LDM training
 
 We adapted the implementation of the latent diffusion model from [PathLDM](https://github.com/cvlab-stonybrook/PathLDM). 
 
-To Train the VAE and the LDM, create the conda environment by: 
+To Train the VAE and the U-Net denoiser, create the conda environment by: 
 ```
 cd 2_ldm 
 conda env create -f environment_olivia.yaml
@@ -25,6 +25,13 @@ For LDM training, use:
 python main.py -t \
 --base configs/latent-diffusion/feature_cond/uni_and_others_from_scratch_concat.yaml \
 --gpus 0,1
+```
+
+# LDM evaluation 
+
+Use the following script to calculate FID statistics:
+```
+2_ldm/analysis/ldm/calculate_fid_stats.py
 ```
 
 # Downstream classification 
