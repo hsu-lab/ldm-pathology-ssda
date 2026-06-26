@@ -33,15 +33,11 @@ class DataProcessor(Dataset):
             is_syn = False 
 
         # Assign labels based on file path keywords
-        if 'lepidic' in img_file:
+        if 'good_prognosis' in img_file:
             label = torch.tensor(0) # good prognosis 
-        elif 'acinar' in img_file:
-            label = torch.tensor(1) # intermediate prognosis 
-        elif 'papillary' in img_file:
-            label = torch.tensor(1) # intermediate prognosis 
-        elif 'micro' in img_file:
-            label = torch.tensor(2) # poor prognosis
-        elif 'solid' in img_file:
+        elif 'intermediate_prognosis' in img_file:
+            label = torch.tensor(1) # intermediate prognosis  
+        elif 'poor_prognosis' in img_file:
             label = torch.tensor(2) # poor prognosis
         elif 'nontumor' in img_file:
             label = torch.tensor(3) # non-tumor

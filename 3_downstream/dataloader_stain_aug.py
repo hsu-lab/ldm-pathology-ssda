@@ -8,14 +8,6 @@ from torch.utils.data import Dataset
 from PIL import Image
 import torchvision.transforms as T
 
-CLASS_FROM_PATH = {
-    "lepidic":      0,  # good prognosis
-    "acinar":       1,  # intermediate
-    "papillary":    1,  # intermediate
-    "micro":        2,  # poor
-    "solid":        2,  # poor
-    "nontumor":     3,  # non-tumor
-}
 
 class DataProcessor(Dataset):
     def __init__(
@@ -69,10 +61,16 @@ class DataProcessor(Dataset):
         return len(self.imgs_ids)
 
     def _get_label_from_path(self, img_file: str) -> torch.Tensor:
-        for key, cls in CLASS_FROM_PATH.items():
-            if key in img_file:
-                return torch.tensor(cls, dtype=torch.long)
-        raise ValueError(f"Unknown class in filename: {img_file}")
+        if 'good_prognosis' in img_file:
+            return torch.tensor(0, dtype=torch.long)  # good prognosis
+        elif 'intermediate_prognosis' in img_file:
+            return torch.tensor(1, dtype=torch.long)  # intermediate prognosis
+        elif 'poor_prognosis' in img_file:
+            return torch.tensor(2, dtype=torch.long)  # poor prognosis
+        elif 'nontumor' in img_file:
+            return torch.tensor(3, dtype=torch.long)  # non-tumor
+        else:
+            raise ValueError(f"Unknown class in filename: {img_file}")
 
     def __getitem__(self, i):
         img_file = self.imgs_ids[i]
