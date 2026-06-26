@@ -1,0 +1,123 @@
+# using the pre-trained VAE from PathLDM 
+
+model:
+  base_learning_rate: 5e-5 # 1e-4
+  target: ldm.models.diffusion.ddpm.LatentDiffusion
+  params:
+    linear_start: 0.0015
+    linear_end: 0.0195
+    num_timesteps_cond: 1
+    log_every_t: 100
+    timesteps: 1000
+    first_stage_key: image
+    cond_stage_key: class_label
+    conditioning_key: crossattn
+    cond_stage_trainable: False
+    image_size: 64
+    channels: 3
+    track_fid: True
+    monitor: val/loss
+    use_ema: False
+
+    scheduler_config:
+      target: ldm.lr_scheduler.LambdaWarmUpCosineScheduler
+      params:
+        warm_up_steps: 0
+        lr_start: 1.0
+        lr_max: 1.0
+        lr_min: 1e-8 # 1e-4
+        max_decay_steps: 250000 # 25000
+
+    unet_config:
+      target: ldm.modules.diffusionmodules.openaimodel.UNetModel
+      params:
+        image_size: 64
+        in_channels: 3
+        out_channels: 3
+        model_channels: 192
+        attention_resolutions: [8, 4, 2]
+        num_res_blocks: 2
+        channel_mult: [ 1,2,3,5 ]
+        num_heads: 1
+        use_spatial_transformer: True
+        transformer_depth: 1
+        context_dim: 512
+
+    first_stage_config:
+      target: ldm.models.autoencoder.VQModelInterface
+      params:
+        ckpt_path: "models/ldm/path-ldm-class-cond/weights/vae.ckpt"
+        embed_dim: 3
+        n_embed: 8192
+        ddconfig:
+          double_z: false
+          z_channels: 3
+          resolution: 256
+          in_channels: 3
+          out_ch: 3
+          ch: 128
+          ch_mult:
+          - 1
+          - 2
+          - 4
+          num_res_blocks: 2
+          attn_resolutions: []
+          dropout: 0.0
+        lossconfig:
+          target: torch.nn.Identity
+
+    cond_stage_config:
+      target: ldm.modules.encoders.modules.UNIAndConditionEmbedderConcat
+      params:
+        embed_dim: 512
+        n_cohorts: 3
+        n_preservation_methods: 4
+        key1: cohort_id
+        key2: preservation_method_id
+       
+data:
+  target: main.DataModuleFromConfig
+  params:
+    batch_size: 24 # all configs have 64, but the paper says 48 per gpu 
+    num_workers: 12 #12
+    wrap: false
+    train:
+      target: ldm.data.class_cond.uni_and_cohort.CohortIDWithFeaturesDataset
+      params:
+        config:
+          image_lmdb_path: ../data/dev_lmdb_25_tissue_split_by_pid/train_tiles.lmdb
+          feature_lmdb_path: ../data/dev_lmdb_25_tissue_split_by_pid/train_features.lmdb
+          csv_path: ../data/dev_lmdb_25_tissue_split_by_pid/train_tiles_conditions.csv
+          resize: 256 
+          split: train
+          p_uncond: 0.1 # 1.0
+    validation:
+      target: ldm.data.class_cond.uni_and_cohort.CohortIDWithFeaturesDataset
+      params:
+        config:
+          image_lmdb_path: ../data/dev_lmdb_25_tissue_split_by_pid/train_tiles.lmdb
+          feature_lmdb_path: ../data/dev_lmdb_25_tissue_split_by_pid/train_features.lmdb
+          csv_path: ../data/dev_lmdb_25_tissue_split_by_pid/train_tiles_conditions_for_sampling_in_splits/split_2.csv
+          resize: 256 
+          split:  test
+          p_uncond: 0 # 1.0
+          
+lightning:
+  callbacks:
+    image_logger:
+      target: main.ImageLogger
+      params:
+        batch_frequency: 1000 # 5000
+        max_images: 8
+        increase_log_steps: False
+        log_images_kwargs:
+          quantize_denoised: False
+          inpaint: False
+    model_checkpoint:
+      target: pytorch_lightning.callbacks.ModelCheckpoint
+      params:
+        save_weights_only: True
+  trainer:
+    benchmark: True
+    check_val_every_n_epoch: 1
+    val_check_interval: 1000 # run validation every 1000 training steps
